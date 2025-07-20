@@ -53,4 +53,6 @@ dkms.conf
 
 # Librarys
 thirdparty/
-lib/
+
+# Builds
+build/
