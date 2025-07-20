@@ -1,4 +1,5 @@
 #include "jing_buffer.h"
+#include <errno.h>
 #include <string.h>
 
 int jing_buffer_init(jing_buffer *buffer, size_t init_size, malloc_func_t mc,

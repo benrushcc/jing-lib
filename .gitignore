@@ -56,3 +56,6 @@ thirdparty/
 
 # Builds
 build/
+
+# Logs
+*.log

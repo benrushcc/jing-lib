@@ -5,7 +5,6 @@
 #include "mimalloc.h"
 #include <errno.h>
 
-
 int jing_deflate_success(void) { return LIBDEFLATE_SUCCESS; }
 
 int jing_deflate_bad_data(void) { return LIBDEFLATE_BAD_DATA; }
@@ -94,22 +93,24 @@ size_t jing_gzip_compress_bound(struct libdeflate_compressor *compressor,
 }
 
 int jing_deflate_decompress(struct libdeflate_decompressor *decompressor,
-                            void *in, size_t in_nbytes, void *out,
+                            const void *in, size_t in_nbytes, void *out,
                             size_t out_nbytes_avail,
                             size_t *actual_out_nbytes_ret) {
   return libdeflate_deflate_decompress(decompressor, in, in_nbytes, out,
                                        out_nbytes_avail, actual_out_nbytes_ret);
 }
 
-int jing_zlib_decompress(struct libdeflate_decompressor *decompressor, void *in,
-                         size_t in_nbytes, void *out, size_t out_nbytes_avail,
+int jing_zlib_decompress(struct libdeflate_decompressor *decompressor,
+                         const void *in, size_t in_nbytes, void *out,
+                         size_t out_nbytes_avail,
                          size_t *actual_out_nbytes_ret) {
   return libdeflate_zlib_decompress(decompressor, in, in_nbytes, out,
                                     out_nbytes_avail, actual_out_nbytes_ret);
 }
 
-int jing_gzip_decompress(struct libdeflate_decompressor *decompressor, void *in,
-                         size_t in_nbytes, void *out, size_t out_nbytes_avail,
+int jing_gzip_decompress(struct libdeflate_decompressor *decompressor,
+                         const void *in, size_t in_nbytes, void *out,
+                         size_t out_nbytes_avail,
                          size_t *actual_out_nbytes_ret) {
   return libdeflate_gzip_decompress(decompressor, in, in_nbytes, out,
                                     out_nbytes_avail, actual_out_nbytes_ret);

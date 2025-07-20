@@ -67,12 +67,13 @@ JING_EXPORT_SYMBOL int jing_brotli_decoder_decompress_stream(
     BrotliDecoderState *state, size_t *available_in, const uint8_t **next_in,
     size_t *available_out, uint8_t **next_out, size_t *total_out);
 
-JING_EXPORT_SYMBOL void jing_brotli_decompress_mi(void *in, size_t len,
+JING_EXPORT_SYMBOL void jing_brotli_decompress_mi(const void *in, size_t len,
                                                   size_t initial_size,
                                                   size_t limit,
                                                   jing_result *result);
 
-JING_EXPORT_SYMBOL void jing_brotli_decompress_stream_mi(void *in, size_t len,
+JING_EXPORT_SYMBOL void jing_brotli_decompress_stream_mi(const void *in,
+                                                         size_t len,
                                                          size_t initial_size,
                                                          size_t limit,
                                                          jing_result *result);

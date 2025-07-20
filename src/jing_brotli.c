@@ -7,7 +7,6 @@
 #include "mimalloc.h"
 #include <errno.h>
 
-
 int jing_brotli_min_window_bits(void) { return BROTLI_MIN_WINDOW_BITS; }
 
 int jing_brotli_max_window_bits(void) { return BROTLI_MAX_WINDOW_BITS; }
@@ -111,7 +110,7 @@ void jing_brotli_compress_mi(void *in, size_t len, int level, int window_bits,
   }
 }
 
-void jing_brotli_decompress_mi(void *in, size_t len, size_t initial_size,
+void jing_brotli_decompress_mi(const void *in, size_t len, size_t initial_size,
                                size_t limit, jing_result *result) {
   BrotliDecoderState *state =
       jing_brotli_decoder_create_instance_ex(mi_malloc, mi_free);
@@ -126,13 +125,13 @@ void jing_brotli_decompress_mi(void *in, size_t len, size_t initial_size,
     return;
   }
   size_t available_in = len;
-  uint8_t *in_ptr = in;
   size_t total_out = initial_size;
   size_t available_out = initial_size;
   uint8_t *out_ptr = out;
   for (;;) {
-    switch (BrotliDecoderDecompressStream(state, &available_in, &in_ptr,
-                                          &available_out, &out_ptr, NULL)) {
+    switch (BrotliDecoderDecompressStream(state, &available_in,
+                                          (const uint8_t **)&in, &available_out,
+                                          &out_ptr, NULL)) {
     case BROTLI_DECODER_RESULT_SUCCESS: {
       jing_brotli_decoder_destroy_instance(state);
       jing_ptr_result(result, out, total_out - available_out,
@@ -168,8 +167,9 @@ void jing_brotli_decompress_mi(void *in, size_t len, size_t initial_size,
   }
 }
 
-void jing_brotli_decompress_stream_mi(void *in, size_t len, size_t initial_size,
-                                      size_t limit, jing_result *result) {
+void jing_brotli_decompress_stream_mi(const void *in, size_t len,
+                                      size_t initial_size, size_t limit,
+                                      jing_result *result) {
   BrotliDecoderState *state =
       jing_brotli_decoder_create_instance_ex(mi_malloc, mi_free);
   if (state == NULL) {
@@ -191,12 +191,12 @@ void jing_brotli_decompress_stream_mi(void *in, size_t len, size_t initial_size,
     return;
   }
   size_t available_in = len;
-  uint8_t *in_ptr = in;
   size_t available_out = initial_size;
   uint8_t *out_ptr = out;
   for (;;) {
-    switch (BrotliDecoderDecompressStream(state, &available_in, &in_ptr,
-                                          &available_out, &out_ptr, NULL)) {
+    switch (BrotliDecoderDecompressStream(state, &available_in,
+                                          (const uint8_t **)&in, &available_out,
+                                          &out_ptr, NULL)) {
     case BROTLI_DECODER_RESULT_SUCCESS: {
       jing_brotli_decoder_destroy_instance(state);
       r = jing_buffer_append(&b, out, initial_size - available_out, limit);
