@@ -298,9 +298,9 @@ elseif(APPLE)
     cd \"${openssl_SOURCE_DIR}\"
     ./Configure darwin64-arm64 --release \\
         --with-brotli-include=${brotli_SOURCE_DIR}/c/include \\
-        --with-brotli-lib=${brotli_BINARY_DIR}/Release \\
+        --with-brotli-lib=${brotli_BINARY_DIR} \\
         --with-zstd-include=${zstd_SOURCE_DIR}/lib \\
-        --with-zstd-lib=${zstd_BINARY_DIR}/lib/Release \\
+        --with-zstd-lib=${zstd_BINARY_DIR}/lib \\
         no-apps enable-brotli enable-zstd no-deprecated no-docs \\
         no-tls-deprecated-ec no-slh-dsa no-sm2-precomp \\
         no-srtp no-tests no-ui-console no-stdio enable-tfo no-uplink \\
@@ -324,9 +324,9 @@ elseif(UNIX)
     cd \"${openssl_SOURCE_DIR}\"
     ./Configure linux-x86_64 --release \\
         --with-brotli-include=${brotli_SOURCE_DIR}/c/include \\
-        --with-brotli-lib=${brotli_BINARY_DIR}/Release \\
+        --with-brotli-lib=${brotli_BINARY_DIR} \\
         --with-zstd-include=${zstd_SOURCE_DIR}/lib \\
-        --with-zstd-lib=${zstd_BINARY_DIR}/lib/Release \\
+        --with-zstd-lib=${zstd_BINARY_DIR}/lib \\
         enable-ktls no-apps enable-brotli enable-zstd no-deprecated no-docs \\
         no-tls-deprecated-ec enable-ec_nistp_64_gcc_128 no-shared no-slh-dsa \\
         no-sm2-precomp no-srtp no-tests no-ui-console no-stdio enable-tfo no-uplink \\
