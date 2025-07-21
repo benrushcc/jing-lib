@@ -316,7 +316,7 @@ elseif(APPLE)
         WORKING_DIRECTORY ${openssl_SOURCE_DIR}
         VERBATIM
     )
-    target_link_libraries(jing PRIVATE ${openssl_SOURCE_DIR}/libcrypto.dylib ${openssl_SOURCE_DIR}/libssl.dylib brotlicommon brotlienc brotlidec libzstd_static)
+    target_link_libraries(jing PRIVATE ${openssl_SOURCE_DIR}/libcrypto.a ${openssl_SOURCE_DIR}/libssl.a brotlicommon brotlienc brotlidec libzstd_static)
 elseif(UNIX)
     message(STATUS "Configuring OpenSSL for linux")
     file(WRITE "${CMAKE_BINARY_DIR}/jing_build_openssl.sh" "
