@@ -302,7 +302,7 @@ elseif(APPLE)
         --with-zstd-include=${zstd_SOURCE_DIR}/lib \\
         --with-zstd-lib=${zstd_BINARY_DIR}/lib \\
         no-apps enable-brotli enable-zstd no-deprecated no-docs \\
-        no-tls-deprecated-ec no-slh-dsa no-sm2-precomp \\
+        no-tls-deprecated-ec no-shared no-slh-dsa no-sm2-precomp \\
         no-srtp no-tests no-ui-console no-stdio enable-tfo no-uplink \\
         no-ssl3 no-tls1 no-tls1_1 no-dtls1 no-ssl3-method \\
         no-tls1-method no-tls1_1-method no-dtls1-method \\
