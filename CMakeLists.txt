@@ -4,6 +4,26 @@ cmake_minimum_required(VERSION 3.24...4.0)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# set proxy
+if(DEFINED HTTP_PROXY)
+    set(ENV{HTTP_PROXY} "${HTTP_PROXY}")
+endif()
+if(DEFINED HTTPS_PROXY)
+    set(ENV{HTTPS_PROXY} "${HTTPS_PROXY}")
+endif()
+
+# check macOS architecture
+if(APPLE)
+    execute_process(
+        COMMAND uname -m
+        OUTPUT_VARIABLE MACOS_ARCH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(NOT MACOS_ARCH STREQUAL "arm64")
+        message(FATAL_ERROR "Jing project only supports Apple Silicon (ARM64) Macs. Current architecture: ${CURRENT_ARCH}")
+    endif()
+endif()
+
 # set compiler toolchain
 if(WIN32)
     set(CMAKE_GENERATOR_PLATFORM "x64" CACHE STRING "" FORCE)
@@ -276,7 +296,7 @@ elseif(APPLE)
     file(WRITE "${CMAKE_BINARY_DIR}/jing_build_openssl.sh" "
     #!/bin/sh
     cd \"${openssl_SOURCE_DIR}\"
-    ./Configure darwin64-arm64-cc --release \\
+    ./Configure darwin64-arm64 --release \\
         --with-brotli-include=${brotli_SOURCE_DIR}/c/include \\
         --with-brotli-lib=${brotli_BINARY_DIR}/Release \\
         --with-zstd-include=${zstd_SOURCE_DIR}/lib \\
