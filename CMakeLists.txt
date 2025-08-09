@@ -42,7 +42,10 @@ endif()
 
 project(jing_project VERSION 1.0.0 LANGUAGES C CXX)
 
-# build using this command : cmake -E remove_directory build && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release --verbose > cmake.log
+# build using this command : cmake -E remove_directory build && cmake -B build -DCMAKE_BUILD_TYPE=Release -DJING_ENABLE_TESTS=ON && cmake --build build --config Release --verbose
+
+# whether to enable test functions for jing library
+option(JING_ENABLE_TESTS "Enable test functions in the library" OFF)
 
 # use release build by default
 if(NOT CMAKE_BUILD_TYPE)
@@ -131,6 +134,10 @@ elseif(UNIX)
 endif()
 target_compile_options(jing PRIVATE ${JING_COMPILE_OPTIONS})
 target_link_options(jing PRIVATE ${JING_LINK_OPTIONS})
+
+if(JING_ENABLE_TESTS)
+    target_compile_definitions(jing PRIVATE JING_ENABLE_TESTS)
+endif()
 
 # build c-ares as a static library
 FetchContent_Declare(

@@ -55,3 +55,29 @@ void jing_ptr_result(jing_result *r, void *value, size_t len, int flag) {
   r->len = len;
   r->data.ptr_val = value;
 }
+
+#ifdef JING_ENABLE_TESTS
+
+#include <errno.h>
+#include <stdarg.h>
+
+int jing_test_int(void) { return 0; }
+
+int jing_test_errno(int err) {
+  errno = err;
+  return err;
+}
+
+int jing_test_sum_vargs(int count, ...) {
+  va_list args;
+  int sum = 0;
+  int i;
+  va_start(args, count);
+  for (i = 0; i < count; i++) {
+    sum += va_arg(args, int);
+  }
+  va_end(args);
+  return sum;
+}
+
+#endif

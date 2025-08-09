@@ -86,6 +86,16 @@ JING_HIDDEN_SYMBOL void jing_double_result(jing_result *r, double value,
 JING_HIDDEN_SYMBOL void jing_ptr_result(jing_result *r, void *value, size_t len,
                                         int flag);
 
+#ifdef JING_ENABLE_TESTS
+
+JING_EXPORT_SYMBOL int jing_test_int(void);
+
+JING_EXPORT_SYMBOL int jing_test_errno(int err);
+
+JING_EXPORT_SYMBOL int jing_test_sum_vargs(int count, ...);
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif
