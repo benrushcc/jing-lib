@@ -276,14 +276,6 @@ target_include_directories(jing PRIVATE ${zstd_SOURCE_DIR}/lib)
 target_link_libraries(jing PRIVATE libzstd_static)
 
 # build openssl
-if(WIN32)
-    set(CRYPTO_LIB "${openssl_SOURCE_DIR}/libcrypto.lib")
-    set(SSL_LIB "${openssl_SOURCE_DIR}/libssl.lib")
-else()
-    set(CRYPTO_LIB "${openssl_SOURCE_DIR}/libcrypto.a")
-    set(SSL_LIB "${openssl_SOURCE_DIR}/libssl.a")
-endif()
-
 FetchContent_Declare(
     openssl
     GIT_REPOSITORY https://github.com/openssl/openssl.git
@@ -294,7 +286,15 @@ message(STATUS "Configuring openssl")
 FetchContent_MakeAvailable(openssl)
 message(STATUS "Configuring openssl succeed")
 target_include_directories(jing PRIVATE ${openssl_SOURCE_DIR}/include)
-target_link_libraries(jing PRIVATE ${CRYPTO_LIB} ${SSL_LIB} brotlicommon brotlienc brotlidec libzstd_static)
+if(WIN32)
+    set(CRYPTO_LIB "${openssl_SOURCE_DIR}/libcrypto_static.lib")
+    set(SSL_LIB "${openssl_SOURCE_DIR}/libssl_static.lib")
+    target_link_libraries(jing PRIVATE ws2_32 crypt32 advapi32 ${CRYPTO_LIB} ${SSL_LIB} brotlicommon brotlienc brotlidec libzstd_static)
+else()
+    set(CRYPTO_LIB "${openssl_SOURCE_DIR}/libcrypto.a")
+    set(SSL_LIB "${openssl_SOURCE_DIR}/libssl.a")
+    target_link_libraries(jing PRIVATE ${CRYPTO_LIB} ${SSL_LIB} brotlicommon brotlienc brotlidec libzstd_static)
+endif()
 
 if(EXISTS "${CRYPTO_LIB}" AND EXISTS "${SSL_LIB}")
     message(STATUS "OpenSSL libraries already exist, skipping build")
