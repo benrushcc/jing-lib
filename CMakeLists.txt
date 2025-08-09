@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 3.24...4.0)
+cmake_minimum_required(VERSION 3.24)
+
+# treat warning as errors
+set(CMAKE_COMPILER_WARNING_AS_ERRORS ON)
 
 # set c standard
 set(CMAKE_C_STANDARD 11)
@@ -51,7 +54,6 @@ include(FetchContent)
 
 # check for windows environment 
 if(WIN32)
-    add_compile_options(/wd4819)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL" CACHE STRING "" FORCE)
     execute_process(
         COMMAND nasm -v
@@ -101,11 +103,6 @@ if(WIN32)
     endif()
 endif()
 
-# # enable LTO
-# include(CheckIPOSupported)
-# check_ipo_supported()
-# set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-
 # our target
 add_library(jing SHARED 
     src/jing_common.c 
@@ -117,12 +114,13 @@ add_library(jing SHARED
     src/jing_deflate.c
     src/jing_brotli.c
     src/jing_zstd.c
+    src/jing_c_ares.c
     src/jing_ssl.c
 )
 
 # compiler options for our target
 if(WIN32)
-    set(JING_COMPILE_OPTIONS "/MD;/O2;/W3;/GF;/nologo")
+    set(JING_COMPILE_OPTIONS "/MD;/O2;/W3;/GF;/nologo;/wd4819")
     set(JING_LINK_OPTIONS "/OPT:REF;/OPT:ICF;/DEBUG:NONE")
 elseif(APPLE)
     set(JING_COMPILE_OPTIONS "-O3;-Wall;-march=native;-fvisibility=hidden")
@@ -133,6 +131,27 @@ elseif(UNIX)
 endif()
 target_compile_options(jing PRIVATE ${JING_COMPILE_OPTIONS})
 target_link_options(jing PRIVATE ${JING_LINK_OPTIONS})
+
+# build c-ares as a static library
+FetchContent_Declare(
+    cares
+    GIT_REPOSITORY https://github.com/c-ares/c-ares.git
+    GIT_TAG tags/v1.34.5
+    GIT_SHALLOW TRUE
+)
+set(CARES_STATIC ON CACHE BOOL "Whether to build c-ares static library" FORCE)
+set(CARES_SHARED OFF CACHE BOOL "Whether to build c-ares shared library" FORCE)
+set(CARES_INSTALL OFF CACHE BOOL "Whether to hook c-ares in installation" FORCE)
+set(CARES_SYMBOL_HIDING ON CACHE BOOL "Whether to hide c-ares private symbols" FORCE)
+set(CARES_STATIC_PIC ON CACHE BOOL "Whether to build c-ares static library as position-independent" FORCE)
+set(CARES_BUILD_TOOLS OFF CACHE BOOL "Whether to build c-ares tools" FORCE)
+message(STATUS "Configuring c-ares")
+FetchContent_MakeAvailable(cares)
+message(STATUS "Configuring c-ares succeed")
+target_compile_options(c-ares PRIVATE ${JING_COMPILE_OPTIONS})
+target_include_directories(jing PRIVATE ${cares_SOURCE_DIR}/include)
+target_link_libraries(jing PRIVATE c-ares)
+
 
 # build wepoll as a object library
 if(WIN32)
@@ -257,95 +276,106 @@ target_include_directories(jing PRIVATE ${zstd_SOURCE_DIR}/lib)
 target_link_libraries(jing PRIVATE libzstd_static)
 
 # build openssl
+if(WIN32)
+    set(CRYPTO_LIB "${openssl_SOURCE_DIR}/libcrypto.lib")
+    set(SSL_LIB "${openssl_SOURCE_DIR}/libssl.lib")
+else()
+    set(CRYPTO_LIB "${openssl_SOURCE_DIR}/libcrypto.a")
+    set(SSL_LIB "${openssl_SOURCE_DIR}/libssl.a")
+endif()
+
 FetchContent_Declare(
     openssl
-    URL https://github.com/openssl/openssl/releases/download/openssl-3.5.1/openssl-3.5.1.tar.gz
-    URL_HASH SHA256=529043b15cffa5f36077a4d0af83f3de399807181d607441d734196d889b641f
+    GIT_REPOSITORY https://github.com/openssl/openssl.git
+    GIT_TAG tags/openssl-3.5.1
+    GIT_SHALLOW TRUE
 )
 message(STATUS "Configuring openssl")
 FetchContent_MakeAvailable(openssl)
 message(STATUS "Configuring openssl succeed")
 target_include_directories(jing PRIVATE ${openssl_SOURCE_DIR}/include)
-if(WIN32)
-    message(STATUS "Configuring OpenSSL for Windows")
-    file(WRITE "${CMAKE_BINARY_DIR}/jing_build_openssl.bat" "
-    @echo off
-    call \"${VCVARS_PATH}\"
-    cd \"${openssl_SOURCE_DIR}\"
-    perl Configure VC-WIN64A --release ^
-        --with-brotli-include=\"${brotli_SOURCE_DIR}/c/include\" ^
-        --with-brotli-lib=\"${brotli_BINARY_DIR}/Release\" ^
-        --with-zstd-include=\"${zstd_SOURCE_DIR}/lib\" ^
-        --with-zstd-lib=\"${zstd_BINARY_DIR}/lib/Release/zstd_static.lib\" ^
-        no-apps enable-brotli enable-zstd no-deprecated no-docs ^
-        no-tls-deprecated-ec no-slh-dsa no-sm2-precomp no-srtp no-tests ^
-        no-ui-console no-stdio no-uplink no-ssl3 no-tls1 no-tls1_1 no-dtls1 ^
-        no-ssl3-method no-tls1-method no-tls1_1-method no-dtls1-method ^
-        no-des no-rc4 no-rc2 no-md4 no-rmd160 no-idea no-seed no-bf no-mdc2 ^
-        CFLAGS=\"/MD /O2 /W3 /GF /nologo /wd4090 /wd4133 /wd4267 /wd4244 /wd4334 /wd4819\"
-    nmake
-    ")
-    add_custom_target(build_openssl
-        COMMAND cmd.exe /c "${CMAKE_BINARY_DIR}/jing_build_openssl.bat"
-        WORKING_DIRECTORY ${openssl_SOURCE_DIR}
-        VERBATIM
-    )
-    target_link_libraries(jing PRIVATE ws2_32 crypt32 advapi32 ${openssl_SOURCE_DIR}/libcrypto.lib ${openssl_SOURCE_DIR}/libssl.lib brotlicommon brotlienc brotlidec libzstd_static)
-elseif(APPLE)
-    message(STATUS "Configuring OpenSSL for macOS")
-    file(WRITE "${CMAKE_BINARY_DIR}/jing_build_openssl.sh" "
-    #!/bin/sh
-    cd \"${openssl_SOURCE_DIR}\"
-    ./Configure darwin64-arm64 --release \\
-        --with-brotli-include=${brotli_SOURCE_DIR}/c/include \\
-        --with-brotli-lib=${brotli_BINARY_DIR}/Release \\
-        --with-zstd-include=${zstd_SOURCE_DIR}/lib \\
-        --with-zstd-lib=${zstd_BINARY_DIR}/lib/Release \\
-        no-apps enable-brotli enable-zstd no-deprecated no-docs \\
-        no-tls-deprecated-ec no-slh-dsa no-sm2-precomp \\
-        no-srtp no-tests no-ui-console no-stdio enable-tfo no-uplink \\
-        no-ssl3 no-tls1 no-tls1_1 no-dtls1 no-ssl3-method \\
-        no-tls1-method no-tls1_1-method no-dtls1-method \\
-        no-des no-rc4 no-rc2 no-md4 no-rmd160 no-idea no-seed no-bf no-mdc2 \\
-        CFLAGS=\"-O3 -Wall -fvisibility=hidden\"
-    make -j4
-    ")
-    add_custom_target(build_openssl
-        COMMAND chmod +x "${CMAKE_BINARY_DIR}/jing_build_openssl.sh"
-        COMMAND "${CMAKE_BINARY_DIR}/jing_build_openssl.sh"
-        WORKING_DIRECTORY ${openssl_SOURCE_DIR}
-        VERBATIM
-    )
-    target_link_libraries(jing PRIVATE ${openssl_SOURCE_DIR}/libcrypto.dylib ${openssl_SOURCE_DIR}/libssl.dylib brotlicommon brotlienc brotlidec libzstd_static)
-elseif(UNIX)
-    message(STATUS "Configuring OpenSSL for linux")
-    file(WRITE "${CMAKE_BINARY_DIR}/jing_build_openssl.sh" "
-    #!/bin/sh
-    cd \"${openssl_SOURCE_DIR}\"
-    ./Configure linux-x86_64 --release \\
-        --with-brotli-include=${brotli_SOURCE_DIR}/c/include \\
-        --with-brotli-lib=${brotli_BINARY_DIR}/Release \\
-        --with-zstd-include=${zstd_SOURCE_DIR}/lib \\
-        --with-zstd-lib=${zstd_BINARY_DIR}/lib/Release \\
-        enable-ktls no-apps enable-brotli enable-zstd no-deprecated no-docs \\
-        no-tls-deprecated-ec enable-ec_nistp_64_gcc_128 no-shared no-slh-dsa \\
-        no-sm2-precomp no-srtp no-tests no-ui-console no-stdio enable-tfo no-uplink \\
-        no-ssl3 no-tls1 no-tls1_1 no-dtls1 no-ssl3-method no-tls1-method \\
-        no-tls1_1-method no-dtls1-method no-des no-rc4 no-rc2 no-md4 \\
-        no-rmd160 no-idea no-seed no-bf no-mdc2 \\
-        CFLAGS=\"-O3 -Wall -fvisibility=hidden\"
-    make -j4
-    ")
-    add_custom_target(build_openssl
-        COMMAND chmod +x "${CMAKE_BINARY_DIR}/jing_build_openssl.sh"
-        COMMAND "${CMAKE_BINARY_DIR}/jing_build_openssl.sh"
-        WORKING_DIRECTORY ${openssl_SOURCE_DIR}
-        VERBATIM
-    )
-    target_link_libraries(jing PRIVATE ${openssl_SOURCE_DIR}/libcrypto.a ${openssl_SOURCE_DIR}/libssl.a brotlicommon brotlienc brotlidec libzstd_static)
-else()
-    message(FATAL_ERROR "Unrecognized os")
-endif()
+target_link_libraries(jing PRIVATE ${CRYPTO_LIB} ${SSL_LIB} brotlicommon brotlienc brotlidec libzstd_static)
 
-add_dependencies(build_openssl brotlicommon brotlienc brotlidec libzstd_static)
-add_dependencies(jing build_openssl)
+if(EXISTS "${CRYPTO_LIB}" AND EXISTS "${SSL_LIB}")
+    message(STATUS "OpenSSL libraries already exist, skipping build")
+else()
+    if(WIN32)
+        message(STATUS "Configuring OpenSSL for Windows")
+        file(WRITE "${CMAKE_BINARY_DIR}/jing_build_openssl.bat" "
+        @echo off
+        call \"${VCVARS_PATH}\"
+        cd \"${openssl_SOURCE_DIR}\"
+        perl Configure VC-WIN64A --release ^
+            --with-brotli-include=\"${brotli_SOURCE_DIR}/c/include\" ^
+            --with-brotli-lib=\"${brotli_BINARY_DIR}/Release\" ^
+            --with-zstd-include=\"${zstd_SOURCE_DIR}/lib\" ^
+            --with-zstd-lib=\"${zstd_BINARY_DIR}/lib/Release/zstd_static.lib\" ^
+            no-apps enable-brotli enable-zstd no-deprecated no-docs ^
+            no-tls-deprecated-ec no-slh-dsa no-sm2-precomp no-srtp no-tests ^
+            no-ui-console no-stdio no-uplink no-ssl3 no-tls1 no-tls1_1 no-dtls1 ^
+            no-ssl3-method no-tls1-method no-tls1_1-method no-dtls1-method ^
+            no-des no-rc4 no-rc2 no-md4 no-rmd160 no-idea no-seed no-bf no-mdc2 ^
+            CFLAGS=\"/MD /O2 /W3 /GF /nologo /wd4090 /wd4133 /wd4267 /wd4244 /wd4334 /wd4819\"
+        nmake
+        ")
+        add_custom_target(build_openssl
+            COMMAND cmd.exe /c "${CMAKE_BINARY_DIR}/jing_build_openssl.bat"
+            WORKING_DIRECTORY ${openssl_SOURCE_DIR}
+            VERBATIM
+        )
+    elseif(APPLE)
+        message(STATUS "Configuring OpenSSL for macOS")
+        file(WRITE "${CMAKE_BINARY_DIR}/jing_build_openssl.sh" "
+        #!/bin/sh
+        cd \"${openssl_SOURCE_DIR}\"
+        ./Configure darwin64-arm64 --release \\
+            --with-brotli-include=${brotli_SOURCE_DIR}/c/include \\
+            --with-brotli-lib=${brotli_BINARY_DIR}/Release \\
+            --with-zstd-include=${zstd_SOURCE_DIR}/lib \\
+            --with-zstd-lib=${zstd_BINARY_DIR}/lib/Release \\
+            no-apps enable-brotli enable-zstd no-deprecated no-docs \\
+            no-tls-deprecated-ec no-slh-dsa no-sm2-precomp \\
+            no-srtp no-tests no-ui-console no-stdio enable-tfo no-uplink \\
+            no-ssl3 no-tls1 no-tls1_1 no-dtls1 no-ssl3-method \\
+            no-tls1-method no-tls1_1-method no-dtls1-method \\
+            no-des no-rc4 no-rc2 no-md4 no-rmd160 no-idea no-seed no-bf no-mdc2 \\
+            CFLAGS=\"-O3 -Wall -fvisibility=hidden\"
+        make -j4
+        ")
+        add_custom_target(build_openssl
+            COMMAND chmod +x "${CMAKE_BINARY_DIR}/jing_build_openssl.sh"
+            COMMAND "${CMAKE_BINARY_DIR}/jing_build_openssl.sh"
+            WORKING_DIRECTORY ${openssl_SOURCE_DIR}
+            VERBATIM
+        )
+    elseif(UNIX)
+        message(STATUS "Configuring OpenSSL for linux")
+        file(WRITE "${CMAKE_BINARY_DIR}/jing_build_openssl.sh" "
+        #!/bin/sh
+        cd \"${openssl_SOURCE_DIR}\"
+        ./Configure linux-x86_64 --release \\
+            --with-brotli-include=${brotli_SOURCE_DIR}/c/include \\
+            --with-brotli-lib=${brotli_BINARY_DIR}/Release \\
+            --with-zstd-include=${zstd_SOURCE_DIR}/lib \\
+            --with-zstd-lib=${zstd_BINARY_DIR}/lib/Release \\
+            enable-ktls no-apps enable-brotli enable-zstd no-deprecated no-docs \\
+            no-tls-deprecated-ec enable-ec_nistp_64_gcc_128 no-shared no-slh-dsa \\
+            no-sm2-precomp no-srtp no-tests no-ui-console no-stdio enable-tfo no-uplink \\
+            no-ssl3 no-tls1 no-tls1_1 no-dtls1 no-ssl3-method no-tls1-method \\
+            no-tls1_1-method no-dtls1-method no-des no-rc4 no-rc2 no-md4 \\
+            no-rmd160 no-idea no-seed no-bf no-mdc2 \\
+            CFLAGS=\"-O3 -Wall -fvisibility=hidden\"
+        make -j4
+        ")
+        add_custom_target(build_openssl
+            COMMAND chmod +x "${CMAKE_BINARY_DIR}/jing_build_openssl.sh"
+            COMMAND "${CMAKE_BINARY_DIR}/jing_build_openssl.sh"
+            WORKING_DIRECTORY ${openssl_SOURCE_DIR}
+            VERBATIM
+        )
+    else()
+        message(FATAL_ERROR "Unrecognized os")
+    endif()
+    add_dependencies(build_openssl brotlicommon brotlienc brotlidec libzstd_static)
+    add_dependencies(jing build_openssl)
+endif()
