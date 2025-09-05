@@ -1,15 +1,18 @@
 cmake_minimum_required(VERSION 3.24)
 
-# Build using this command : cmake -GNinja -B build -DCMAKE_BUILD_TYPE=Release -DJING_ENABLE_TESTS=ON && cmake --build build --config Release
+# build using this command : cmake -GNinja -B build -DCMAKE_BUILD_TYPE=Release -DJING_ENABLE_TESTS=ON && cmake --build build --config Release
 
-# Treat warning as errors
+# treat warning as errors
 set(CMAKE_COMPILER_WARNING_AS_ERRORS ON)
 
-# Set c standard
+# use -fPIC
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# set c standard
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Set proxy if possible
+# set proxy if possible
 if(DEFINED HTTP_PROXY)
     set(ENV{HTTP_PROXY} "${HTTP_PROXY}")
 endif()
@@ -17,7 +20,7 @@ if(DEFINED HTTPS_PROXY)
     set(ENV{HTTPS_PROXY} "${HTTPS_PROXY}")
 endif()
 
-# Check macOS architecture, currently only support arm64 
+# check macOS architecture, currently only support arm64 
 if(APPLE)
     execute_process(
         COMMAND uname -m
@@ -29,14 +32,14 @@ if(APPLE)
     endif()
 endif()
 
-# Enable LTO (Link Time Optimization) for all platforms
+# enable LTO (Link Time Optimization) for all platforms
 include(CheckIPOSupported)
 check_ipo_supported(RESULT result)
 if(result)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
-# Set compiler toolchain
+# set compiler toolchain
 if(WIN32)
     set(CMAKE_C_COMPILER cl)
     set(CMAKE_CXX_COMPILER cl)
@@ -98,22 +101,24 @@ else()
     message(FATAL_ERROR "Cargo not found, please install cargo first")
 endif()
 
+# check python
+find_program(PYTHON_EXECUTABLE python3)
+if(NOT PYTHON_EXECUTABLE)
+    find_program(PYTHON_EXECUTABLE python)
+endif()
+if(PYTHON_EXECUTABLE)
+    execute_process(
+        COMMAND ${PYTHON_EXECUTABLE} --version
+        OUTPUT_VARIABLE PYTHON_VERSION_OUTPUT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    message(STATUS "Python version: ${PYTHON_VERSION_OUTPUT}")
+else()
+    message(FATAL_ERROR "Python not found, please install python first")
+endif()
+
 # check for windows environment 
 if(WIN32)
-    find_program(PYTHON_EXECUTABLE python3)
-    if(NOT PYTHON_EXECUTABLE)
-        find_program(PYTHON_EXECUTABLE python)
-    endif()
-    if(PYTHON_EXECUTABLE)
-        execute_process(
-            COMMAND ${PYTHON_EXECUTABLE} --version
-            OUTPUT_VARIABLE PYTHON_VERSION_OUTPUT
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        message(STATUS "Python version: ${PYTHON_VERSION_OUTPUT}")
-    else()
-        message(FATAL_ERROR "Python not found, please install python first")
-    endif()
     find_program(NASM_EXECUTABLE nasm)
     if(NASM_EXECUTABLE)
         execute_process(
@@ -214,6 +219,9 @@ message(STATUS "Configuring c-ares")
 FetchContent_MakeAvailable(cares)
 message(STATUS "Configuring c-ares succeed")
 target_compile_options(c-ares PRIVATE ${JING_COMPILE_OPTIONS})
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_compile_options(c-ares PRIVATE "-Wno-stringop-overflow" "-Wno-unused-result")
+endif()
 target_include_directories(jing PRIVATE ${cares_SOURCE_DIR}/include)
 target_link_libraries(jing PRIVATE c-ares)
 
@@ -326,27 +334,13 @@ endforeach()
 target_include_directories(jing PRIVATE ${brotli_SOURCE_DIR}/c/include)
 target_link_libraries(jing PRIVATE brotlicommon brotlienc brotlidec)
 
-FetchContent_Declare(
-    boringssl
-    GIT_REPOSITORY https://github.com/google/boringssl.git
-    GIT_TAG tags/0.20250818.0
-    GIT_SHALLOW TRUE
-)
-message(STATUS "Configuring boringssl")
-FetchContent_MakeAvailable(boringssl)
-message(STATUS "Configuring boringssl succeed")
-target_include_directories(jing PRIVATE ${boringssl_SOURCE_DIR}/include)
-if(WIN32)
-    target_link_libraries(jing PRIVATE ws2_32 crypt32 advapi32)
-endif()
-target_link_libraries(jing PRIVATE crypto ssl)
-
 # build zstd
 FetchContent_Declare(
     zstd
     GIT_REPOSITORY https://github.com/facebook/zstd.git
     GIT_TAG tags/v1.5.7
     GIT_SHALLOW TRUE
+    SOURCE_SUBDIR none_exist
 )
 message(STATUS "Configuring zstd")
 FetchContent_MakeAvailable(zstd)
@@ -361,3 +355,22 @@ file(READ "${zstd_SOURCE_DIR}/build/single_file_libs/zstd.c" ZSTD_CONTENT)
 string(REPLACE "#include \"../zstd.h\"" "#include \"zstd.h\"" ZSTD_MODIFIED_CONTENT "${ZSTD_CONTENT}") # modify include path
 file(WRITE "${zstd_SOURCE_DIR}/lib/zstd.c" "${ZSTD_MODIFIED_CONTENT}")
 target_sources(jing PRIVATE ${zstd_SOURCE_DIR}/lib/zstd.c)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    set_source_files_properties(${zstd_SOURCE_DIR}/lib/zstd.c PROPERTIES COMPILE_OPTIONS "-Wno-maybe-uninitialized")
+endif()
+
+# build boringssl
+FetchContent_Declare(
+    boringssl
+    GIT_REPOSITORY https://github.com/google/boringssl.git
+    GIT_TAG tags/0.20250818.0
+    GIT_SHALLOW TRUE
+)
+message(STATUS "Configuring boringssl")
+FetchContent_MakeAvailable(boringssl)
+message(STATUS "Configuring boringssl succeed")
+target_include_directories(jing PRIVATE ${boringssl_SOURCE_DIR}/include)
+if(WIN32)
+    target_link_libraries(jing PRIVATE ws2_32 crypt32 advapi32)
+endif()
+target_link_libraries(jing PRIVATE crypto ssl)
