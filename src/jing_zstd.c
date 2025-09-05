@@ -5,7 +5,6 @@
 #include "zstd.h"
 #include <errno.h>
 
-
 static_assert(sizeof(unsigned long long) == 8,
               "unsigned long long size mismatch");
 static_assert(sizeof(unsigned) == 4, "unsigned size mismatch");
@@ -153,7 +152,7 @@ void jing_zstd_decompress_stream_mi(void *in, size_t len, size_t initial_size,
     size_t ret = ZSTD_decompressStream(stream, &out_buffer, &in_buffer);
     if (ret == 0) {
       ZSTD_freeDStream(stream);
-      int r = jing_buffer_append(&b, buffer, out_buffer.pos, limit);
+      r = jing_buffer_append(&b, buffer, out_buffer.pos, limit);
       mi_free(buffer);
       if (r > 0) {
         jing_buffer_free(&b);
@@ -169,7 +168,7 @@ void jing_zstd_decompress_stream_mi(void *in, size_t len, size_t initial_size,
       jing_err_result(result, ZSTD_getErrorCode(ret), JING_ZSTD_FLAG);
       return;
     } else {
-      int r = jing_buffer_append(&b, buffer, out_buffer.pos, limit);
+      r = jing_buffer_append(&b, buffer, out_buffer.pos, limit);
       if (r > 0) {
         ZSTD_freeDStream(stream);
         mi_free(buffer);
