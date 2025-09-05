@@ -332,7 +332,9 @@ foreach(lib brotlicommon brotlienc brotlidec)
     endif()
 endforeach()
 target_include_directories(jing PRIVATE ${brotli_SOURCE_DIR}/c/include)
-target_link_libraries(jing PRIVATE brotlicommon brotlienc brotlidec)
+target_link_libraries(brotlienc brotlicommon)
+target_link_libraries(brotlidec brotlicommon)
+target_link_libraries(jing PRIVATE brotlienc brotlidec)
 
 # build zstd
 FetchContent_Declare(
@@ -373,4 +375,5 @@ target_include_directories(jing PRIVATE ${boringssl_SOURCE_DIR}/include)
 if(WIN32)
     target_link_libraries(jing PRIVATE ws2_32 crypt32 advapi32)
 endif()
-target_link_libraries(jing PRIVATE crypto ssl)
+target_link_libraries(ssl crypto)
+target_link_libraries(jing PRIVATE ssl)
