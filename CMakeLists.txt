@@ -1,16 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 
-# build using this command : cmake -GNinja -B build -DCMAKE_BUILD_TYPE=Release -DJING_ENABLE_TESTS=ON && cmake --build build --config Release
+# build using this command : cmake --preset=windows or macos or linux && cmake --build build
 
-# treat warning as errors
-set(CMAKE_COMPILER_WARNING_AS_ERRORS ON)
-
-# use -fPIC
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-# set c standard
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+option(JING_ENABLE_TESTS "Enable test functions in the library" OFF)
+option(JING_ENABLE_LTO   "Enable Link Time Optimization"        ON)
 
 # set proxy if possible
 if(DEFINED HTTP_PROXY)
@@ -20,180 +13,20 @@ if(DEFINED HTTPS_PROXY)
     set(ENV{HTTPS_PROXY} "${HTTPS_PROXY}")
 endif()
 
-# check macOS architecture, currently only support arm64 
-if(APPLE)
-    execute_process(
-        COMMAND uname -m
-        OUTPUT_VARIABLE MACOS_ARCH
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    if(NOT MACOS_ARCH STREQUAL "arm64")
-        message(FATAL_ERROR "Jing project only supports Apple Silicon (ARM64) Macs. Current architecture: ${CURRENT_ARCH}")
-    endif()
-endif()
-
-# enable LTO (Link Time Optimization) for all platforms
-include(CheckIPOSupported)
-check_ipo_supported(RESULT result)
-if(result)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif()
-
-# set compiler toolchain
-if(WIN32)
-    set(CMAKE_C_COMPILER cl)
-    set(CMAKE_CXX_COMPILER cl)
-elseif(APPLE)
-    set(CMAKE_C_COMPILER clang)
-    set(CMAKE_CXX_COMPILER clang++)
-elseif(UNIX)
-    set(CMAKE_C_COMPILER gcc)
-    set(CMAKE_CXX_COMPILER g++)
+# detecting presets
+set(PRESET_NAME $ENV{JING_PRESET_NAME})
+if(DEFINED PRESET_NAME)
+    message(STATUS "Preset name : ${PRESET_NAME}")
+else()
+    message(FATAL_ERROR "Preset not found")
 endif()
 
 project(jing_project VERSION 1.0.0 LANGUAGES C CXX)
 
-# whether to enable test functions for jing library
-option(JING_ENABLE_TESTS "Enable test functions in the library" OFF)
-
-# use release build by default
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
-endif()
-
-# check go
-find_program(GO_EXECUTABLE go)
-if(GO_EXECUTABLE)
-    message(STATUS "Go compiler found: ${GO_EXECUTABLE}")
-    execute_process(
-        COMMAND ${GO_EXECUTABLE} version
-        OUTPUT_VARIABLE GO_VERSION_OUTPUT
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    message(STATUS "Go version: ${GO_VERSION_OUTPUT}")
-else()
-    message(FATAL_ERROR "Go compiler not found, please install golang first")
-endif()
-
-# check rustc
-find_program(RUSTC_EXECUTABLE rustc)
-if(RUSTC_EXECUTABLE)
-    execute_process(
-        COMMAND ${RUSTC_EXECUTABLE} --version
-        OUTPUT_VARIABLE RUSTC_VERSION_OUTPUT
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    message(STATUS "Rustc version: ${RUSTC_VERSION_OUTPUT}")
-else()
-    message(FATAL_ERROR "Rustc compiler not found, please install rustc first")
-endif()
-
-# check cargo
-find_program(CARGO_EXECUTABLE cargo)
-if(CARGO_EXECUTABLE)
-    execute_process(
-        COMMAND ${CARGO_EXECUTABLE} --version
-        OUTPUT_VARIABLE CARGO_VERSION_OUTPUT
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    message(STATUS "Cargo version: ${CARGO_VERSION_OUTPUT}")
-else()
-    message(FATAL_ERROR "Cargo not found, please install cargo first")
-endif()
-
-# check python
-find_program(PYTHON_EXECUTABLE python3)
-if(NOT PYTHON_EXECUTABLE)
-    find_program(PYTHON_EXECUTABLE python)
-endif()
-if(PYTHON_EXECUTABLE)
-    execute_process(
-        COMMAND ${PYTHON_EXECUTABLE} --version
-        OUTPUT_VARIABLE PYTHON_VERSION_OUTPUT
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    message(STATUS "Python version: ${PYTHON_VERSION_OUTPUT}")
-else()
-    message(FATAL_ERROR "Python not found, please install python first")
-endif()
-
-# check for windows environment 
-if(WIN32)
-    find_program(NASM_EXECUTABLE nasm)
-    if(NASM_EXECUTABLE)
-        execute_process(
-            COMMAND ${NASM_EXECUTABLE} -v
-            OUTPUT_VARIABLE NASM_VERSION_OUTPUT
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        message(STATUS "Nasm version: ${NASM_VERSION_OUTPUT}")
-    else()
-        message(FATAL_ERROR "Nasm not found, please install nasm first")
-    endif()
-    find_program(PERL_EXECUTABLE perl)
-    if(PERL_EXECUTABLE)
-        execute_process(
-            COMMAND ${PERL_EXECUTABLE} -v
-            OUTPUT_VARIABLE PERL_VERSION_OUTPUT
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        message(STATUS "Perl version: ${PERL_VERSION_OUTPUT}")
-    else()
-        message(FATAL_ERROR "Perl not found, please install perl first")
-    endif()
-    # using vswhere to find vcvars64.bat path
-    find_program(VSWHERE_PATH vswhere
-        PATHS "$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/Installer"
-        "$ENV{ProgramFiles}/Microsoft Visual Studio/Installer"
-    )
-    if(VSWHERE_PATH)
-        execute_process(
-            COMMAND "${VSWHERE_PATH}" -latest -property installationPath
-            OUTPUT_VARIABLE VS_INSTALL_PATH
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        if(VS_INSTALL_PATH)
-            set(VCVARS_PATH "${VS_INSTALL_PATH}/VC/Auxiliary/Build/vcvars64.bat" CACHE PATH "Path to vcvars64.bat")
-            if(EXISTS "${VCVARS_PATH}")
-                message(STATUS "Found vcvars64.bat: ${VCVARS_PATH}")
-            else()
-                message(FATAL_ERROR "vcvars64.bat not found at ${VCVARS_PATH}")
-            endif()
-        else()
-            message(FATAL_ERROR "Could not determine Visual Studio installation path")
-        endif()
-    else()
-        message(FATAL_ERROR "vswhere not found, please install visual studio first")
-    endif()
-endif()
-
-# Set target
-add_library(jing SHARED 
-    src/jing_common.c 
-    src/jing_buffer.c
-    src/jing_malloc.c 
-    src/jing_rpmalloc.c 
-    src/jing_mimalloc.c
-    src/jing_c_ares.c
-    src/jing_deflate.c
-    src/jing_brotli.c
-    src/jing_zstd.c
-    src/jing_ssl.c
-)
-
-# compiler options for our target
-if(WIN32)
-    set(JING_COMPILE_OPTIONS "/MD;/O2;/W4;/GF;/nologo;/utf-8")
-    set(JING_LINK_OPTIONS "/OPT:REF;/OPT:ICF;/DEBUG:NONE")
-elseif(APPLE)
-    set(JING_COMPILE_OPTIONS "-O3;-Wall;-march=native;-fvisibility=hidden")
-    set(JING_LINK_OPTIONS "-dead_strip;-Wl,-x")
-elseif(UNIX)
-    set(JING_COMPILE_OPTIONS "-O3;-Wall;-march=native;-fvisibility=hidden")
-    set(JING_LINK_OPTIONS "-Wl,--strip-all")
-endif()
-target_compile_options(jing PRIVATE ${JING_COMPILE_OPTIONS})
-target_link_options(jing PRIVATE ${JING_LINK_OPTIONS})
+# set main target
+add_library(jing SHARED)
+file(GLOB C_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
+target_sources(jing PRIVATE ${C_SOURCES})
 
 if(JING_ENABLE_TESTS)
     target_compile_definitions(jing PRIVATE JING_ENABLE_TESTS)
@@ -209,21 +42,18 @@ FetchContent_Declare(
     GIT_TAG tags/v1.34.5
     GIT_SHALLOW TRUE
 )
-set(CARES_STATIC ON CACHE BOOL "Whether to build c-ares static library" FORCE)
-set(CARES_SHARED OFF CACHE BOOL "Whether to build c-ares shared library" FORCE)
-set(CARES_INSTALL OFF CACHE BOOL "Whether to hook c-ares in installation" FORCE)
-set(CARES_SYMBOL_HIDING ON CACHE BOOL "Whether to hide c-ares private symbols" FORCE)
-set(CARES_STATIC_PIC ON CACHE BOOL "Whether to build c-ares static library as position-independent" FORCE)
-set(CARES_BUILD_TOOLS OFF CACHE BOOL "Whether to build c-ares tools" FORCE)
+set(CARES_STATIC        ON  CACHE BOOL "Whether to build c-ares static library"   FORCE)
+set(CARES_SHARED        OFF CACHE BOOL "Whether to build c-ares shared library"   FORCE)
+set(CARES_INSTALL       OFF CACHE BOOL "Whether to hook c-ares in installation"   FORCE)
+set(CARES_SYMBOL_HIDING ON  CACHE BOOL "Whether to hide c-ares private symbols"   FORCE)
+set(CARES_STATIC_PIC    ON  CACHE BOOL "Whether to build as position-independent" FORCE)
+set(CARES_BUILD_TOOLS   OFF CACHE BOOL "Whether to build c-ares tools"            FORCE)
 message(STATUS "Configuring c-ares")
 FetchContent_MakeAvailable(cares)
 message(STATUS "Configuring c-ares succeed")
-target_compile_options(c-ares PRIVATE ${JING_COMPILE_OPTIONS})
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_compile_options(c-ares PRIVATE "-Wno-stringop-overflow" "-Wno-unused-result")
+if(CMAKE_COMPILER_IS_GNUCC)
+    target_compile_options(c-ares PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-stringop-overflow -Wno-unused-result>)
 endif()
-target_include_directories(jing PRIVATE ${cares_SOURCE_DIR}/include)
-target_link_libraries(jing PRIVATE c-ares)
 
 # build wepoll
 if(WIN32)
@@ -237,9 +67,8 @@ if(WIN32)
     message(STATUS "Configuring wepoll")
     FetchContent_MakeAvailable(wepoll)
     message(STATUS "Configuring wepoll succeed")
-    target_include_directories(jing PRIVATE ${wepoll_SOURCE_DIR})
-    target_link_libraries(jing PRIVATE ws2_32)
-    target_sources(jing PRIVATE ${wepoll_SOURCE_DIR}/wepoll.c)
+    add_library(wepollstatic STATIC ${wepoll_SOURCE_DIR}/wepoll.c)
+    target_include_directories(wepollstatic PUBLIC ${wepoll_SOURCE_DIR})
 endif()
 
 # build mimalloc as a static library
@@ -250,18 +79,15 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 set(MI_BUILD_SHARED OFF CACHE BOOL "Whether to build mimalloc shared library" FORCE)
-set(MI_BUILD_STATIC ON CACHE BOOL  "Whether to build mimalloc static library" FORCE)
+set(MI_BUILD_STATIC ON  CACHE BOOL "Whether to build mimalloc static library" FORCE)
 set(MI_BUILD_OBJECT OFF CACHE BOOL "Whether to build mimalloc object library" FORCE)
-set(MI_BUILD_TESTS OFF CACHE BOOL  "Whether to build mimalloc tests" FORCE)
-set(MI_OVERRIDE OFF CACHE BOOL "Whether to override malloc and free" FORCE)
-set(MI_OPT_ARCH ON CACHE BOOL "Whether to enable architecture specific optimizations" FORCE)
-set(MI_OPT_SIMD ON CACHE BOOL "Whether to enable SIMD optimizations" FORCE)
+set(MI_BUILD_TESTS  OFF CACHE BOOL "Whether to build mimalloc tests"          FORCE)
+set(MI_OVERRIDE     OFF CACHE BOOL "Whether to override malloc and free"      FORCE)
+set(MI_OPT_ARCH     ON  CACHE BOOL "Whether to enable arch optimizations"     FORCE)
+set(MI_OPT_SIMD     ON  CACHE BOOL "Whether to enable SIMD optimizations"     FORCE)
 message(STATUS "Configuring mimalloc")
 FetchContent_MakeAvailable(mimalloc)
 message(STATUS "Configuring mimalloc succeed")
-target_compile_options(mimalloc-static PRIVATE ${JING_COMPILE_OPTIONS})
-target_include_directories(jing PRIVATE ${mimalloc_SOURCE_DIR}/include)
-target_link_libraries(jing PRIVATE mimalloc-static)
 
 # build rpmalloc as a object library
 FetchContent_Declare(
@@ -274,8 +100,8 @@ FetchContent_Declare(
 message(STATUS "Configuring rpmalloc")
 FetchContent_MakeAvailable(rpmalloc)
 message(STATUS "Configuring rpmalloc succeed")
-target_include_directories(jing PRIVATE ${rpmalloc_SOURCE_DIR}/rpmalloc)
-target_sources(jing PRIVATE ${rpmalloc_SOURCE_DIR}/rpmalloc/rpmalloc.c)
+add_library(rpmallocstatic STATIC ${rpmalloc_SOURCE_DIR}/rpmalloc/rpmalloc.c)
+target_include_directories(rpmallocstatic PUBLIC ${rpmalloc_SOURCE_DIR}/rpmalloc)
 
 # # build fastfloat as a header-only library
 # FetchContent_Declare(
@@ -290,6 +116,22 @@ target_sources(jing PRIVATE ${rpmalloc_SOURCE_DIR}/rpmalloc/rpmalloc.c)
 # target_include_directories(jing PRIVATE ${fast_float_SOURCE_DIR}/include)
 # target_sources(jing PRIVATE src/jing_fastfloat.cpp)
 
+# build zlib
+FetchContent_Declare(
+  zlibproject
+  GIT_REPOSITORY https://github.com/madler/zlib.git
+  GIT_TAG tags/v1.3.1
+  GIT_SHALLOW TRUE
+)
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "Whether to build zlib examples" FORCE)
+message(STATUS "Configuring zlib")
+FetchContent_MakeAvailable(zlibproject)
+message(STATUS "Configuring zlib succeed")
+if(WIN32)
+    target_compile_options(zlibstatic PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/wd4127 /wd4244>)
+    target_compile_options(zlib PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/wd4127 /wd4244>)
+endif()
+
 # build libdeflate
 FetchContent_Declare(
   libdeflate
@@ -301,17 +143,15 @@ FetchContent_Declare(
 message(STATUS "Configuring libdeflate")
 FetchContent_MakeAvailable(libdeflate)
 message(STATUS "Configuring libdeflate succeed")
-target_include_directories(jing PRIVATE ${libdeflate_SOURCE_DIR})
-file(GLOB LIBDEFLATE_SOURCES 
+file(GLOB LIBDEFLATE_SOURCES CONFIGURE_DEPENDS
   "${libdeflate_SOURCE_DIR}/lib/*.c"
   "${libdeflate_SOURCE_DIR}/lib/*/*.c"
 )
+add_library(libdeflatestatic STATIC ${LIBDEFLATE_SOURCES})
+target_include_directories(libdeflatestatic PUBLIC ${libdeflate_SOURCE_DIR})
 if(WIN32)
-    foreach(source_file ${LIBDEFLATE_SOURCES})
-        set_source_files_properties(${source_file} PROPERTIES COMPILE_OPTIONS "/wd4113")
-    endforeach()
+    target_compile_options(libdeflatestatic PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/wd4113>)
 endif()
-target_sources(jing PRIVATE ${LIBDEFLATE_SOURCES})
 
 # build brotli
 FetchContent_Declare(
@@ -321,20 +161,15 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Whether to build brotli shared library" FORCE)
-set(BUILD_TESTING OFF CACHE BOOL "Whether to build brotli tests" FORCE)
+set(BUILD_TESTING     OFF CACHE BOOL "Whether to build brotli tests"          FORCE)
 message(STATUS "Configuring brotli")
 FetchContent_MakeAvailable(brotli)
 message(STATUS "Configuring brotli succeed")
 foreach(lib brotlicommon brotlienc brotlidec)
-    target_compile_options(${lib} PRIVATE ${JING_COMPILE_OPTIONS})
     if(WIN32)
-        target_compile_options(${lib} PRIVATE /wd4100 /wd4127 /wd4189 /wd4334)
+        target_compile_options(${lib} PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/wd4100 /wd4127 /wd4189 /wd4334>)
     endif()
 endforeach()
-target_include_directories(jing PRIVATE ${brotli_SOURCE_DIR}/c/include)
-target_link_libraries(brotlienc brotlicommon)
-target_link_libraries(brotlidec brotlicommon)
-target_link_libraries(jing PRIVATE brotlienc brotlidec)
 
 # build zstd
 FetchContent_Declare(
@@ -342,23 +177,19 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/facebook/zstd.git
     GIT_TAG tags/v1.5.7
     GIT_SHALLOW TRUE
-    SOURCE_SUBDIR none_exist
+    SOURCE_SUBDIR build/cmake
 )
+set(ZSTD_BUILD_SHARED   OFF CACHE BOOL "Whether to build zstd shared library" FORCE)
+set(ZSTD_BUILD_STATIC   ON  CACHE BOOL "Whether to build zstd static library" FORCE)
+set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Whether to build zstd program"        FORCE)
+set(ZSTD_BUILD_TESTS    OFF CACHE BOOL "Whether to build zstd tests"          FORCE)
+set(ZSTD_BUILD_CONTRIB  OFF CACHE BOOL "Whether to build zstd contrib"        FORCE)
+set(ZSTD_LEGACY_SUPPORT OFF CACHE BOOL "Whether to enable legacy format"      FORCE)
 message(STATUS "Configuring zstd")
 FetchContent_MakeAvailable(zstd)
 message(STATUS "Configuring zstd succeed")
-target_include_directories(jing PRIVATE ${zstd_SOURCE_DIR}/lib)
-execute_process(
-    COMMAND ${PYTHON_EXECUTABLE} combine.py -r ${zstd_SOURCE_DIR}/lib -x legacy/zstd_legacy.h -k zstd.h -o zstd.c zstd-in.c
-    WORKING_DIRECTORY ${zstd_SOURCE_DIR}/build/single_file_libs
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-file(READ "${zstd_SOURCE_DIR}/build/single_file_libs/zstd.c" ZSTD_CONTENT)
-string(REPLACE "#include \"../zstd.h\"" "#include \"zstd.h\"" ZSTD_MODIFIED_CONTENT "${ZSTD_CONTENT}") # modify include path
-file(WRITE "${zstd_SOURCE_DIR}/lib/zstd.c" "${ZSTD_MODIFIED_CONTENT}")
-target_sources(jing PRIVATE ${zstd_SOURCE_DIR}/lib/zstd.c)
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    set_source_files_properties(${zstd_SOURCE_DIR}/lib/zstd.c PROPERTIES COMPILE_OPTIONS "-Wno-maybe-uninitialized")
+if(CMAKE_COMPILER_IS_GNUCC)
+    target_compile_options(libzstd_static PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-maybe-uninitialized>)
 endif()
 
 # build boringssl
@@ -368,12 +199,75 @@ FetchContent_Declare(
     GIT_TAG tags/0.20250818.0
     GIT_SHALLOW TRUE
 )
+if(WIN32)
+    set(OPENSSL_NO_ASM ON CACHE BOOL "Whether to enable asm" FORCE)
+endif()
 message(STATUS "Configuring boringssl")
 FetchContent_MakeAvailable(boringssl)
 message(STATUS "Configuring boringssl succeed")
-target_include_directories(jing PRIVATE ${boringssl_SOURCE_DIR}/include)
+
+# build lsquic
+FetchContent_Declare(
+    lsquic
+    GIT_REPOSITORY https://github.com/litespeedtech/lsquic.git
+    GIT_TAG tags/v4.3.1
+    GIT_SHALLOW TRUE
+    SOURCE_SUBDIR none_exist
+)
+message(STATUS "Configuring lsquic")
+FetchContent_MakeAvailable(lsquic)
+message(STATUS "Configuring lsquic succeed")
+set(LSQUIC_LIB_PATH ${lsquic_BINARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}lsquic${CMAKE_STATIC_LIBRARY_SUFFIX})
+set(LSQUIC_CONFIGURE_ARGS
+    "cmake --preset=${PRESET_NAME}"
+    "-DLIBSSL_DIR=\"${boringssl_SOURCE_DIR}\""
+    "-DLIBSSL_LIB=\"${boringssl_BINARY_DIR}\""
+    "-DCMAKE_INCLUDE_PATH=\"${zlib_SOURCE_DIR}\""
+    "-DCMAKE_LIBRARY_PATH=\"${zlib_BINARY_DIR}\""
+    "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=\"${lsquic_BINARY_DIR}\""
+    "-DLSQUIC_BIN=OFF"
+    "-DLSQUIC_TESTS=OFF"
+)
+list(JOIN LSQUIC_CONFIGURE_ARGS " " LSQUIC_CONFIGURE_COMMAND)
 if(WIN32)
-    target_link_libraries(jing PRIVATE ws2_32 crypt32 advapi32)
+    file(WRITE ${lsquic_SOURCE_DIR}/build_lsquic.ps1 
+"Copy-Item -Path \"${CMAKE_SOURCE_DIR}/CMakePresets.json\" -Destination \"${lsquic_SOURCE_DIR}\" 
+Copy-Item -Path \"${zlib_BINARY_DIR}/zconf.h\" -Destination \"${zlib_SOURCE_DIR}\"
+${LSQUIC_CONFIGURE_COMMAND}
+cmake --build build"
+    )
+    add_custom_command(
+        OUTPUT  ${LSQUIC_LIB_PATH}
+        COMMAND pwsh -File build_lsquic.ps1
+        WORKING_DIRECTORY ${lsquic_SOURCE_DIR}
+        DEPENDS ssl crypto zlibstatic
+        VERBATIM
+    )
+else()
+    file(WRITE ${lsquic_SOURCE_DIR}/build_lsquic.sh 
+"#!/bin/sh
+set -e
+cp \"${CMAKE_SOURCE_DIR}/CMakePresets.json\" \"${lsquic_SOURCE_DIR}\"
+cp \"${zlib_BINARY_DIR}/zconf.h\" \"${zlib_SOURCE_DIR}\"
+${LSQUIC_CONFIGURE_COMMAND}
+cmake --build build"
+    )
+    add_custom_command(
+        OUTPUT  ${LSQUIC_LIB_PATH}
+        COMMAND chmod +x build_lsquic.sh 
+        COMMAND sh build_lsquic.sh
+        WORKING_DIRECTORY ${lsquic_SOURCE_DIR}
+        DEPENDS ssl crypto zlibstatic
+        VERBATIM
+    )
 endif()
-target_link_libraries(ssl crypto)
-target_link_libraries(jing PRIVATE ssl)
+add_custom_target(lsquicbuild DEPENDS ${LSQUIC_LIB_PATH})
+add_library(lsquicstatic INTERFACE)
+add_dependencies(lsquicstatic lsquicbuild)
+target_link_libraries(lsquicstatic INTERFACE ${LSQUIC_LIB_PATH} ssl crypto zlibstatic)
+target_include_directories(lsquicstatic INTERFACE ${lsquic_SOURCE_DIR}/include)
+
+target_link_libraries(jing PRIVATE c-ares lsquicstatic ssl crypto zlibstatic libdeflatestatic libzstd_static brotlienc brotlidec brotlicommon mimalloc-static rpmallocstatic)
+if(WIN32)
+    target_link_libraries(jing PRIVATE wepollstatic)
+endif()
