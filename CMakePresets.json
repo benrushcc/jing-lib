@@ -42,9 +42,11 @@
       "inherits": "default",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "gcc",
-        "CMAKE_C_STANDARD": "gnu11",
+        "CMAKE_C_STANDARD": "11",
+        "CMAKE_C_EXTENSIONS": "ON",
         "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_CXX_STANDARD": "gnu++11",
+        "CMAKE_CXX_STANDARD": "11",
+        "CMAKE_CXX_EXTENSIONS": "ON",
         "CMAKE_C_FLAGS": "-Wall -march=native -fvisibility=hidden",
         "CMAKE_CXX_FLAGS": "-Wall -march=native -fvisibility=hidden"
       },

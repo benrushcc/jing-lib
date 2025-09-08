@@ -221,7 +221,6 @@ set(LSQUIC_LIB_PATH ${lsquic_BINARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}lsquic${C
 set(LSQUIC_CONFIGURE_ARGS
     "cmake --preset=${PRESET_NAME}"
     "-DLIBSSL_DIR=\"${boringssl_SOURCE_DIR}\""
-    "-DLIBSSL_LIB=\"${boringssl_BINARY_DIR}\""
     "-DCMAKE_INCLUDE_PATH=\"${zlib_SOURCE_DIR}\""
     "-DCMAKE_LIBRARY_PATH=\"${zlib_BINARY_DIR}\""
     "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=\"${lsquic_BINARY_DIR}\""
@@ -231,7 +230,9 @@ set(LSQUIC_CONFIGURE_ARGS
 list(JOIN LSQUIC_CONFIGURE_ARGS " " LSQUIC_CONFIGURE_COMMAND)
 if(WIN32)
     file(WRITE ${lsquic_SOURCE_DIR}/build_lsquic.ps1 
-"Copy-Item -Path \"${CMAKE_SOURCE_DIR}/CMakePresets.json\" -Destination \"${lsquic_SOURCE_DIR}\" 
+"Copy-Item -Path \"${boringssl_BINARY_DIR}/crypto.lib\" -Destination \"${boringssl_SOURCE_DIR}\"
+Copy-Item -Path \"${boringssl_BINARY_DIR}/ssl.lib\" -Destination \"${lsquic_SOURCE_DIR}\"
+Copy-Item -Path \"${CMAKE_SOURCE_DIR}/CMakePresets.json\" -Destination \"${lsquic_SOURCE_DIR}\" 
 Copy-Item -Path \"${zlib_BINARY_DIR}/zconf.h\" -Destination \"${zlib_SOURCE_DIR}\"
 ${LSQUIC_CONFIGURE_COMMAND}
 cmake --build build"
@@ -247,6 +248,8 @@ else()
     file(WRITE ${lsquic_SOURCE_DIR}/build_lsquic.sh 
 "#!/bin/sh
 set -e
+cp \"${boringssl_BINARY_DIR}/libcrypto.a\" \"${boringssl_SOURCE_DIR}\"
+cp \"${boringssl_BINARY_DIR}/libssl.a\" \"${boringssl_SOURCE_DIR}\"
 cp \"${CMAKE_SOURCE_DIR}/CMakePresets.json\" \"${lsquic_SOURCE_DIR}\"
 cp \"${zlib_BINARY_DIR}/zconf.h\" \"${zlib_SOURCE_DIR}\"
 ${LSQUIC_CONFIGURE_COMMAND}
