@@ -127,9 +127,9 @@ set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "Whether to build zlib examples" FORCE)
 message(STATUS "Configuring zlib")
 FetchContent_MakeAvailable(zlibproject)
 message(STATUS "Configuring zlib succeed")
+set_target_properties(zlib PROPERTIES EXCLUDE_FROM_ALL TRUE)
 if(WIN32)
     target_compile_options(zlibstatic PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/wd4127 /wd4244>)
-    target_compile_options(zlib PRIVATE $<$<COMPILE_LANGUAGE:C,CXX>:/wd4127 /wd4244>)
 endif()
 
 # build libdeflate
@@ -202,9 +202,26 @@ FetchContent_Declare(
 if(WIN32)
     set(OPENSSL_NO_ASM ON CACHE BOOL "Whether to enable asm" FORCE)
 endif()
+if(APPLE)
+    execute_process(
+        COMMAND xcrun --sdk macosx --show-sdk-path
+        RESULT_VARIABLE XCRUN_RESULT
+        OUTPUT_VARIABLE MACOS_SDK_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(NOT XCRUN_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to get macOS SDK path")
+    endif()
+    set(CMAKE_OSX_SYSROOT       ${MACOS_SDK_PATH}   CACHE STRING "" FORCE)
+    set(CMAKE_OSX_ARCHITECTURES "arm64"             CACHE STRING "" FORCE)
+endif()
 message(STATUS "Configuring boringssl")
 FetchContent_MakeAvailable(boringssl)
 message(STATUS "Configuring boringssl succeed")
+set_target_properties(bssl PROPERTIES EXCLUDE_FROM_ALL TRUE)
+if(APPLE)
+    target_compile_definitions(crypto PRIVATE OPENSSL_STATIC_ARMCAP)
+endif()
 
 # build lsquic
 FetchContent_Declare(
