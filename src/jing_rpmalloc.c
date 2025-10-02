@@ -1,14 +1,6 @@
 #include "jing_rpmalloc.h"
 #include "jing_common.h"
-#include "jing_malloc.h"
 #include "rpmalloc.h"
-
-
-malloc_func_t jing_rp_malloc_funtion(void) { return rpmalloc; }
-
-realloc_func_t jing_rp_realloc_function(void) { return rprealloc; }
-
-free_func_t jing_rp_free_function(void) { return rpfree; }
 
 int jing_rp_initialize(void) { return rpmalloc_initialize(); }
 

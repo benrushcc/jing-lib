@@ -1,9 +1,7 @@
 #include "jing_brotli.h"
 #include "brotli/decode.h"
 #include "brotli/encode.h"
-#include "jing_buffer.h"
 #include "jing_common.h"
-#include "jing_malloc.h"
 #include "mimalloc.h"
 #include <errno.h>
 

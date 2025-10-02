@@ -3,7 +3,6 @@
 
 #include "brotli/decode.h"
 #include "jing_common.h"
-#include "jing_malloc.h"
 
 typedef struct {
   malloc_func_t malloc_func;

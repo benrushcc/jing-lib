@@ -1,13 +1,7 @@
 #ifndef JING_MI_MALLOC_H
 #define JING_MI_MALLOC_H
 
-#include "jing_malloc.h"
-
-JING_EXPORT_SYMBOL malloc_func_t jing_mi_malloc_funtion(void);
-
-JING_EXPORT_SYMBOL realloc_func_t jing_mi_realloc_function(void);
-
-JING_EXPORT_SYMBOL free_func_t jing_mi_free_function(void);
+#include "jing_common.h"
 
 JING_EXPORT_SYMBOL void *jing_mi_malloc(size_t size);
 

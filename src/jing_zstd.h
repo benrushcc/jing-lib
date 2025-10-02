@@ -3,10 +3,8 @@
 
 #define JING_ZSTD_FLAG 60937
 
-#include "jing_buffer.h"
 #include "jing_common.h"
 #include "zstd.h"
-
 
 JING_EXPORT_SYMBOL int jing_zstd_flag(void);
 

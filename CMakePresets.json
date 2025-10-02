@@ -16,6 +16,9 @@
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "CMAKE_EXPORT_COMPILE_COMMANDS": true,
         "CMAKE_POSITION_INDEPENDENT_CODE": true
+      },
+      "environment": {
+        "JING_PRESET_NAME": "${presetName}"
       }
     },
     {
@@ -31,9 +34,6 @@
         "CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS /W4 /nologo /utf-8",
         "CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS /W4 /nologo /utf-8",
         "CMAKE_SHARED_LINKER_FLAGS": "/machine:x64 /DEBUG:NONE"
-      },
-      "environment": {
-        "JING_PRESET_NAME": "windows"
       }
     },
     {
@@ -47,11 +47,8 @@
         "CMAKE_CXX_COMPILER": "g++",
         "CMAKE_CXX_STANDARD": "11",
         "CMAKE_CXX_EXTENSIONS": "ON",
-        "CMAKE_C_FLAGS": "-Wall -march=native -fvisibility=hidden",
-        "CMAKE_CXX_FLAGS": "-Wall -march=native -fvisibility=hidden"
-      },
-      "environment": {
-        "JING_PRESET_NAME": "linux"
+        "CMAKE_C_FLAGS": "-Wall -g0 -march=native -fvisibility=hidden",
+        "CMAKE_CXX_FLAGS": "-Wall -g0 -march=native -fvisibility=hidden"
       }
     },
     {
@@ -63,11 +60,8 @@
         "CMAKE_C_STANDARD": "11",
         "CMAKE_CXX_COMPILER": "clang++",
         "CMAKE_CXX_STANDARD": "11",
-        "CMAKE_C_FLAGS": "-Wall -march=native -fvisibility=hidden",
-        "CMAKE_CXX_FLAGS": "-Wall -march=native -fvisibility=hidden"
-      },
-      "environment": {
-        "JING_PRESET_NAME": "macos"
+        "CMAKE_C_FLAGS": "-Wall -g0 -march=native -fvisibility=hidden",
+        "CMAKE_CXX_FLAGS": "-Wall -g0 -march=native -fvisibility=hidden"
       }
     }
   ]

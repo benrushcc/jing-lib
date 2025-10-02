@@ -2,7 +2,6 @@
 #define JING_DEFLATE_H
 
 #include "jing_common.h"
-#include "jing_malloc.h"
 
 JING_EXPORT_SYMBOL int jing_deflate_success(void);
 

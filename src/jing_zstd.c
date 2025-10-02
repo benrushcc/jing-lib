@@ -1,5 +1,4 @@
 #include "jing_zstd.h"
-#include "jing_buffer.h"
 #include "jing_common.h"
 #include "mimalloc.h"
 #include "zstd.h"

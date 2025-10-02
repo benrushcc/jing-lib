@@ -1,10 +1,6 @@
 #ifndef JING_COMMON_H
 #define JING_COMMON_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -42,7 +38,6 @@ static_assert(sizeof(void *) == 8, "pointer size mismatch");
 #define JING_HIDDEN_SYMBOL __attribute__((visibility("hidden")))
 #endif
 
-// global param
 typedef union {
   int8_t byte_val;   // JAVA_BYTE (byte)
   int16_t short_val; // JAVA_SHORT (short)
@@ -61,6 +56,7 @@ typedef struct {
 } jing_result;
 
 #define JING_NO_ERR 0
+
 #define JING_DEFAULT_FLAG 0
 
 JING_HIDDEN_SYMBOL void jing_err_result(jing_result *r, int err, int flag);
@@ -86,6 +82,40 @@ JING_HIDDEN_SYMBOL void jing_double_result(jing_result *r, double value,
 JING_HIDDEN_SYMBOL void jing_ptr_result(jing_result *r, void *value, size_t len,
                                         int flag);
 
+typedef void *(*malloc_func_t)(size_t size);
+
+typedef void *(*realloc_func_t)(void *ptr, size_t size);
+
+typedef void (*free_func_t)(void *ptr);
+
+JING_EXPORT_SYMBOL void *jing_malloc(size_t size);
+
+JING_EXPORT_SYMBOL void jing_free(void *ptr);
+
+JING_EXPORT_SYMBOL void *jing_realloc(void *ptr, size_t size);
+
+JING_EXPORT_SYMBOL void *jing_aligned_alloc(size_t alignment, size_t size);
+
+JING_EXPORT_SYMBOL void jing_aligned_free(void *ptr);
+
+typedef struct {
+  void *ptr;
+  size_t used;
+  size_t len;
+  malloc_func_t malloc_func;
+  realloc_func_t realloc_func;
+  free_func_t free_func;
+} jing_buffer;
+
+JING_HIDDEN_SYMBOL int jing_buffer_init(jing_buffer *buffer, size_t init_size,
+                                        malloc_func_t mc, realloc_func_t rc,
+                                        free_func_t fc);
+
+JING_HIDDEN_SYMBOL int jing_buffer_append(jing_buffer *buffer, void *in,
+                                          size_t len, size_t limit);
+
+JING_HIDDEN_SYMBOL void jing_buffer_free(jing_buffer *buffer);
+
 #ifdef JING_ENABLE_TESTS
 
 JING_EXPORT_SYMBOL int jing_test_int(void);
@@ -94,10 +124,6 @@ JING_EXPORT_SYMBOL int jing_test_errno(int err);
 
 JING_EXPORT_SYMBOL int jing_test_sum_vargs(int count, ...);
 
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif

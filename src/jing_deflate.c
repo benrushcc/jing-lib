@@ -1,6 +1,5 @@
 #include "jing_deflate.h"
 #include "jing_common.h"
-#include "jing_malloc.h"
 #include "libdeflate.h"
 #include "mimalloc.h"
 #include <errno.h>
