@@ -60,7 +60,6 @@ if(JING_ENABLE_TESTS)
 endif()
 
 # set library versions
-set(JING_TOMLC17_VERSION "R250712" CACHE STRING "tomlc17 library version" FORCE)
 set(JING_YYJSON_VERSION "0.12.0" CACHE STRING "yyjson library version" FORCE)
 set(JING_WEPOLL_VERSION "v1.5.8" CACHE STRING "wepoll library version" FORCE)
 set(JING_MIMALLOC_VERSION "v3.1.5" CACHE STRING "mimalloc library version" FORCE)
@@ -80,7 +79,7 @@ include(FetchContent)
 FetchContent_Declare(
     tomlc17project
     GIT_REPOSITORY https://github.com/cktan/tomlc17.git
-    GIT_TAG tags/${JING_TOMLC17_VERSION}
+    GIT_TAG main
     GIT_SHALLOW TRUE
     SOURCE_SUBDIR none_exist
 )
@@ -285,10 +284,12 @@ list(JOIN LSQUIC_CONFIGURE_ARGS " " LSQUIC_CONFIGURE_COMMAND)
 if(WIN32)
     file(WRITE ${lsquicproject_SOURCE_DIR}/build_lsquic.ps1 
 "Copy-Item -Path \"${boringsslproject_BINARY_DIR}/crypto.lib\" -Destination \"${boringsslproject_SOURCE_DIR}\"
-Copy-Item -Path \"${boringsslproject_BINARY_DIR}/ssl.lib\" -Destination \"${lsquicproject_SOURCE_DIR}\"
+Copy-Item -Path \"${boringsslproject_BINARY_DIR}/ssl.lib\" -Destination \"${boringsslproject_SOURCE_DIR}\"
 Copy-Item -Path \"${CMAKE_SOURCE_DIR}/CMakePresets.json\" -Destination \"${lsquicproject_SOURCE_DIR}\" 
 Copy-Item -Path \"${zlibproject_BINARY_DIR}/zconf.h\" -Destination \"${zlibproject_SOURCE_DIR}\"
-${LSQUIC_CONFIGURE_COMMAND}
+Copy-Item -Path \"${zlibproject_BINARY_DIR}/zlibstatic.lib\" -Destination \"${zlibproject_BINARY_DIR}/zlib.lib\"
+Copy-Item -Path \"${lsquicproject_SOURCE_DIR}/wincompat/vc_compat.h\" -Destination \"${lsquicproject_SOURCE_DIR}/include\"
+${LSQUIC_CONFIGURE_COMMAND} -DCMAKE_C_FLAGS=\"${CMAKE_C_FLAGS} /wd5286 /wd5287\"
 cmake --build build"
     )
     add_custom_command(

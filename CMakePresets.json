@@ -31,8 +31,8 @@
         "CMAKE_CXX_COMPILER": "cl",
         "CMAKE_CXX_STANDARD": "11",
         "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreadedDLL",
-        "CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS /W4 /nologo /utf-8",
-        "CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS /W4 /nologo /utf-8",
+        "CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS /DWIN32_LEAN_AND_MEAN /W4 /nologo /utf-8",
+        "CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS /DWIN32_LEAN_AND_MEAN /W4 /nologo /utf-8",
         "CMAKE_SHARED_LINKER_FLAGS": "/machine:x64 /DEBUG:NONE"
       }
     },
